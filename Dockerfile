@@ -8,8 +8,7 @@ RUN go build -o ./bin/crud_server cmd/grpc_server/main.go
 
 FROM alpine:latest
 
-RUN mkdir -p server
-WORKDIR /usr/local/src/server
+WORKDIR /usr/local/src/
 COPY --from=builder /github.com/grishagavrin/auth-chat-grpc/source/bin/crud_server .
 
 CMD ["./crud_server"]
