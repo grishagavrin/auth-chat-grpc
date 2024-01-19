@@ -21,4 +21,4 @@ services:
       dockerfile: migration.Dockerfile
     restart: on-failure
     environment:
-      DB_HOST: db
+      DB_HOST: pg
