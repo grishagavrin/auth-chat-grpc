@@ -77,6 +77,5 @@ func (r *repo) Get(ctx context.Context, id int64) (*model.Note, error) {
 		return nil, err
 	}
 
-	//TODO: Fix it!!!
 	return converter.ToNoteFromRepo(&note), nil
 }
