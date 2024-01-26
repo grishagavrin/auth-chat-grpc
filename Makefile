@@ -85,7 +85,7 @@ vendor-proto:
 
 grpc-load-test:
 	ghz \
-		--proto api/note_v1/tests/note.proto \
+		--proto api/note_v1/metrics/note.proto \
 		--call note_v1.NoteV1.Get \
 		--data '{"id": "1"}' \
 		--rps 100 \
@@ -96,7 +96,7 @@ grpc-load-test:
 
 grpc-error-load-test:
 	ghz \
-		--proto api/note_v1/tests/note.proto \
+		--proto api/note_v1/metrics/note.proto \
 		--call note_v1.NoteV1.Get \
 		--data '{"id": "0"}' \
 		--rps 100 \
