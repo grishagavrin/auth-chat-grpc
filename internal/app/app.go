@@ -5,9 +5,11 @@ import (
 	"github.com/grishagavrin/auth-chat-grpc/internal/closer"
 	"github.com/grishagavrin/auth-chat-grpc/internal/config"
 	"github.com/grishagavrin/auth-chat-grpc/internal/interceptor"
+	"github.com/grishagavrin/auth-chat-grpc/internal/metrics"
 	desc "github.com/grishagavrin/auth-chat-grpc/pkg/note_v1"
 	_ "github.com/grishagavrin/auth-chat-grpc/statik"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
 	"google.golang.org/grpc"
@@ -25,6 +27,7 @@ type App struct {
 	grpcServer      *grpc.Server
 	httpServer      *http.Server
 	swaggerServer   *http.Server
+	metricsServer   *http.Server
 }
 
 func NewApp(ctx context.Context) (*App, error) {
@@ -45,7 +48,7 @@ func (a *App) Run() error {
 	}()
 
 	wg := sync.WaitGroup{}
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
@@ -74,6 +77,15 @@ func (a *App) Run() error {
 		}
 	}()
 
+	go func() {
+		defer wg.Done()
+
+		err := a.runMetricsServer()
+		if err != nil {
+			log.Fatalf("failed to run Swagger server: %v", err)
+		}
+	}()
+
 	wg.Wait()
 
 	return nil
@@ -83,9 +95,11 @@ func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initConfig,
 		a.initServiceProvider,
+		a.initMetrics,
 		a.initGRPCServer,
 		a.initHTTPServer,
 		a.initSwaggerServer,
+		a.initMetricsServer,
 	}
 
 	for _, f := range inits {
@@ -93,6 +107,15 @@ func (a *App) initDeps(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (a *App) initMetrics(_ context.Context) error {
+	err := metrics.Init()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -152,6 +175,20 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	return nil
 }
 
+func (a *App) initMetricsServer(ctx context.Context) error {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+
+	server := &http.Server{
+		Addr:    a.serviceProvider.MetricsConfig().Address(),
+		Handler: mux,
+	}
+
+	a.metricsServer = server
+
+	return nil
+}
+
 func (a *App) initSwaggerServer(_ context.Context) error {
 	statikFs, err := fs.New()
 	if err != nil {
@@ -190,6 +227,16 @@ func (a *App) runHTTPServer() error {
 	log.Printf("HTTP server is running on %s", a.serviceProvider.HTTPConfig().Address())
 
 	err := a.httpServer.ListenAndServe()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *App) runMetricsServer() error {
+	log.Printf("Metrics server is running on %s", a.serviceProvider.MetricsConfig().Address())
+	err := a.metricsServer.ListenAndServe()
 	if err != nil {
 		return err
 	}

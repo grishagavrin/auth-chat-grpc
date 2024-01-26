@@ -19,6 +19,7 @@ type serviceProvider struct {
 	pgConfig      config.PGConfig
 	grpcConfig    config.GRPCConfig
 	httpConfig    config.HTTPConfig
+	metricsConfig config.MetricsConfig
 	swaggerConfig config.SwaggerConfig
 
 	dbClient       db.Client
@@ -66,11 +67,22 @@ func (s *serviceProvider) HTTPConfig() config.HTTPConfig {
 		if err != nil {
 			log.Fatalf("failed to get http config: %s", err.Error())
 		}
-
 		s.httpConfig = cfg
 	}
 
 	return s.httpConfig
+}
+
+func (s *serviceProvider) MetricsConfig() config.MetricsConfig {
+	if s.metricsConfig == nil {
+		cfg, err := config.NewMetricsConfig()
+		if err != nil {
+			log.Fatalf("failed to get http config: %s", err.Error())
+		}
+		s.metricsConfig = cfg
+	}
+
+	return s.metricsConfig
 }
 
 func (s *serviceProvider) SwaggerConfig() config.SwaggerConfig {
@@ -79,7 +91,6 @@ func (s *serviceProvider) SwaggerConfig() config.SwaggerConfig {
 		if err != nil {
 			log.Fatalf("failed to get swagger config: %s", err.Error())
 		}
-
 		s.swaggerConfig = cfg
 	}
 
