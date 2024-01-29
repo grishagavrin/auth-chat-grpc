@@ -4,11 +4,19 @@ import (
 	"context"
 	"github.com/grishagavrin/auth-chat-grpc/internal/converter"
 	desc "github.com/grishagavrin/auth-chat-grpc/pkg/note_v1"
+	"github.com/opentracing/opentracing-go"
 	"log"
 )
 
 func (i *Implementation) Get(ctx context.Context, req *desc.GetRequest) (*desc.GetResponse, error) {
-	noteObj, err := i.noteService.Get(ctx, req.GetId())
+	getId := req.GetId()
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "get note")
+	defer span.Finish()
+
+	span.SetTag("id", getId)
+
+	noteObj, err := i.noteService.Get(ctx, getId)
 	if err != nil {
 		return nil, err
 	}

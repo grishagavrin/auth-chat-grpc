@@ -6,6 +6,7 @@ import (
 	"github.com/grishagavrin/auth-chat-grpc/internal/config"
 	"github.com/grishagavrin/auth-chat-grpc/internal/interceptor"
 	"github.com/grishagavrin/auth-chat-grpc/internal/metrics"
+	"github.com/grishagavrin/auth-chat-grpc/internal/tracing"
 	desc "github.com/grishagavrin/auth-chat-grpc/pkg/note_v1"
 	_ "github.com/grishagavrin/auth-chat-grpc/statik"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -96,6 +97,7 @@ func (a *App) initDeps(ctx context.Context) error {
 		a.initConfig,
 		a.initServiceProvider,
 		a.initMetrics,
+		a.initTracing,
 		a.initGRPCServer,
 		a.initHTTPServer,
 		a.initSwaggerServer,
@@ -121,6 +123,15 @@ func (a *App) initMetrics(_ context.Context) error {
 	return nil
 }
 
+func (a *App) initTracing(_ context.Context) error {
+	err := tracing.Init("test-service")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (a *App) initConfig(_ context.Context) error {
 	err := config.Load(".env")
 	if err != nil {
@@ -138,9 +149,12 @@ func (a *App) initServiceProvider(_ context.Context) error {
 func (a *App) initGRPCServer(ctx context.Context) error {
 	a.grpcServer = grpc.NewServer(
 		grpc.Creds(insecure.NewCredentials()),
-		//grpc.UnaryInterceptor(interceptor.ValidateInterceptor),
-		grpc.UnaryInterceptor(interceptor.MetricsInterceptor),
-		//grpc.ChainUnaryInterceptor(interceptor.ValidateInterceptor, interceptor.MetricsInterceptor),
+		grpc.ChainUnaryInterceptor(
+			interceptor.ValidateInterceptor,
+			//interceptor.LogInterceptor,
+			interceptor.MetricsInterceptor,
+			interceptor.ServerTracingInterceptor,
+		),
 	)
 
 	reflection.Register(a.grpcServer)
